@@ -1,0 +1,9 @@
+### Run subcommand
+In run subcommand, i want to automatically progress everything.
+- Receive optional argument '-n name' which should be used in cmakelists.txt (run should modify cmakelists.txt according to this argument)
+- run subcommand should modify cmakelists.txt so that packages recorded in .libname are used by project
+
+### Enhancing convenience
+- Please update install, uninstall, run subcommand so that they can support,
+- functionality such like -L, -l, -I in gcc/g++
+- Which means such path and libname should be recorded in .libname and subcommand should modify cmakelists.txt according them

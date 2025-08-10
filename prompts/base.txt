@@ -1,0 +1,60 @@
+Make project for creating cmake template and simple execution
+The binary from this project should be 'ctc'
+
+Project should be written in c++
+use c++17 filesystem library for filesystem management for better portability
+
+#subcommands
+
+##init
+- Create such directories and files under current directory
+    
+    ```
+    currentdir
+    |-bin (directory)
+    |-app (directory)
+    |-lib (directory)
+    |-include (directory)
+    |-CMakeLists.txt (file)
+    |-.gitignore (file)
+    |-.libname (file)
+    ```
+    
+- For optional argument `-r` , also create README.md
+- please make appropriate .gitignore for c/c++
+
+##install
+- Expects arguments are given in follwing form
+    
+    ```
+    ctc install package-name
+    ```
+    
+- Record it in .libname file
+
+##uninstall
+- Expects arguments are given in follwing form
+    
+    ```
+    ctc uninstall package-name
+    ```
+    
+- Remove it in .libname file
+
+##run
+- Execute cmake, make so that binary file is created
+    
+    > **Steps**
+    > 
+    > 1. Modify CMakeLists.txt file
+    > 2. Create `build` directory
+    > 3. move to `build` directory
+    > 4. Excute cmake by `cmake ..`
+    > 5. Excute make
+    > 6. Move back to original directory
+    > 7. Delete build directory
+- Resulting binary should be placed in `bin` directory
+- The entry code is expected to be placed in app directory
+- The other codes are expected to be placed in lib directory
+- Header files in include directory are used by every other codes
+- Packages that are recorded in .libname should be used by cmake findpackage or something
