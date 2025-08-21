@@ -57,13 +57,65 @@ namespace ctc {
                     }
                     entry.type = utils::DependencyEntry::TOOLCHAIN_FILE;
                     entry.value = args[1];
+                } else if (args[0] == "-A") {
+                    // Link override mapping: <pkg> or <pkg>:<component>=<customTarget>
+                    if (args.size() < 2) {
+                        std::cerr << "Error: Mapping required after -A. Example: -A glfw3=glfw or -A Qt6:Gui=Qt6::Gui\n";
+                        return 1;
+                    }
+                    entry.type = utils::DependencyEntry::LINK_OVERRIDE;
+                    entry.value = args[1];
                 } else {
-                    // Default - assume it's a package name
-                    entry.type = utils::DependencyEntry::PACKAGE;
-                    entry.value = args[0];
+                    // Default: package or package with components
+                    std::string package_name = args[0];
+                    std::vector<std::string> components;
+                    
+                    // If provided as pkg:component, split and seed component list
+                    auto sep = package_name.find(':');
+                    if (sep != std::string::npos) {
+                        std::string pkg = package_name.substr(0, sep);
+                        std::string comp = package_name.substr(sep + 1);
+                        package_name = pkg;
+                        if (!comp.empty()) components.push_back(comp);
+                    }
+                    
+                    // Parse additional components via -c flags (repeatable)
+                    for (size_t i = 1; i < args.size(); ++i) {
+                        if (args[i] == "-c" && i + 1 < args.size()) {
+                            components.push_back(args[i + 1]);
+                            ++i;
+                        }
+                    }
+                    
+                    if (!components.empty()) {
+                        // Add each component entry
+                        for (const auto& comp : components) {
+                            utils::DependencyEntry comp_entry;
+                            comp_entry.type = utils::DependencyEntry::PACKAGE_COMPONENT;
+                            comp_entry.value = package_name + ":" + comp;
+                            if (!utils::add_dependency(libname_path, comp_entry)) {
+                                std::cerr << "Failed to update .libname file\n";
+                                return 1;
+                            }
+                            std::cout << "Successfully added package component '" << comp_entry.value << "' to .libname\n";
+                        }
+                    } else {
+                        // Add plain package entry
+                        utils::DependencyEntry pkg_entry;
+                        pkg_entry.type = utils::DependencyEntry::PACKAGE;
+                        pkg_entry.value = package_name;
+                        if (!utils::add_dependency(libname_path, pkg_entry)) {
+                            std::cerr << "Failed to update .libname file\n";
+                            return 1;
+                        }
+                        std::cout << "Successfully added package '" << pkg_entry.value << "' to .libname\n";
+                    }
+                    
+                    std::cout << "Note: Use 'ctc run' to automatically update your CMakeLists.txt.\n";
+                    return 0;
                 }
                 
-                // Add the dependency
+                // Add the dependency (non-package flags path)
                 if (!utils::add_dependency(libname_path, entry)) {
                     std::cerr << "Failed to update .libname file\n";
                     return 1;
@@ -83,8 +135,14 @@ namespace ctc {
                     case utils::DependencyEntry::INCLUDE_PATH:
                         type_name = "include path";
                         break;
+                    case utils::DependencyEntry::PACKAGE_COMPONENT:
+                        type_name = "package component";
+                        break;
                     case utils::DependencyEntry::TOOLCHAIN_FILE:
                         type_name = "toolchain file";
+                        break;
+                    case utils::DependencyEntry::LINK_OVERRIDE:
+                        type_name = "link override";
                         break;
                 }
                 

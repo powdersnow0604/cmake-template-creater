@@ -3,6 +3,8 @@
 #include <sstream>
 #include <iostream>
 #include <algorithm>
+#include <map>
+#include <set>
 
 namespace ctc {
     namespace utils {
@@ -15,6 +17,8 @@ namespace ctc {
                 case LIBRARY_NAME: return "LIB:" + value;
                 case INCLUDE_PATH: return "INCPATH:" + value;
                 case TOOLCHAIN_FILE: return "TOOLCHAIN:" + value;
+                case LINK_OVERRIDE: return "LINKOVR:" + value; // format: pkg[:component]=customTarget
+                case PACKAGE_COMPONENT: return "PKGCOMP:" + value; // format: pkg:component
                 default: return value;
             }
         }
@@ -36,6 +40,12 @@ namespace ctc {
             } else if (str.substr(0, 10) == "TOOLCHAIN:") {
                 entry.type = TOOLCHAIN_FILE;
                 entry.value = str.substr(10);
+            } else if (str.substr(0, 8) == "LINKOVR:") {
+                entry.type = LINK_OVERRIDE;
+                entry.value = str.substr(8); // expected: pkg[:component]=customTarget
+            } else if (str.substr(0, 8) == "PKGCOMP:") {
+                entry.type = PACKAGE_COMPONENT;
+                entry.value = str.substr(8); // expected: pkg:component
             } else {
                 // Legacy format - assume it's a package
                 entry.type = PACKAGE;
@@ -167,6 +177,10 @@ namespace ctc {
             std::vector<std::string> lib_paths;
             std::vector<std::string> lib_names;
             std::vector<std::string> inc_paths;
+            // map of package -> list of components
+            std::map<std::string, std::vector<std::string>> package_to_components;
+            // map of pkg or pkg:component -> custom link name
+            std::map<std::string, std::string> link_overrides;
             
             for (const auto& dep : dependencies) {
                 switch (dep.type) {
@@ -185,14 +199,38 @@ namespace ctc {
                     case DependencyEntry::TOOLCHAIN_FILE:
                         // Toolchain file is used during cmake invocation, not in CMakeLists content
                         break;
+                    case DependencyEntry::LINK_OVERRIDE: {
+                        auto eq = dep.value.find('=');
+                        if (eq != std::string::npos) {
+                            std::string key = dep.value.substr(0, eq);
+                            std::string target = dep.value.substr(eq + 1);
+                            link_overrides[key] = target;
+                        }
+                        break;
+                    }
+                    case DependencyEntry::PACKAGE_COMPONENT: {
+                        auto sep = dep.value.find(':');
+                        if (sep != std::string::npos) {
+                            std::string pkg = dep.value.substr(0, sep);
+                            std::string comp = dep.value.substr(sep + 1);
+                            package_to_components[pkg].push_back(comp);
+                        }
+                        break;
+                    }
                 }
             }
             
-            // Add find_package calls
-            if (!packages.empty()) {
-                cmake_content << "# Find packages\n";
-                for (const auto& pkg : packages) {
-                    cmake_content << "find_package(" << pkg << " REQUIRED)\n";
+            // Add find_package calls: try CONFIG first, fallback to MODULE
+            if (!packages.empty() || !package_to_components.empty()) {
+                cmake_content << "# Find packages (try CONFIG first, fallback to MODULE)\n";
+                // unique set of all packages involved (plain packages + packages with components)
+                std::set<std::string> all_pkgs(packages.begin(), packages.end());
+                for (const auto& kv : package_to_components) { all_pkgs.insert(kv.first); }
+                for (const auto& pkg : all_pkgs) {
+                    cmake_content << "find_package(" << pkg << " QUIET CONFIG)\n";
+                    cmake_content << "if(NOT " << pkg << "_FOUND)\n";
+                    cmake_content << "    find_package(" << pkg << " REQUIRED MODULE)\n";
+                    cmake_content << "endif()\n";
                 }
                 cmake_content << "\n";
             }
@@ -233,13 +271,38 @@ namespace ctc {
             cmake_content << ")\n\n";
             
             // Link libraries
-            if (!lib_names.empty() || !packages.empty()) {
+            if (!lib_names.empty() || !packages.empty() || !package_to_components.empty()) {
                 cmake_content << "# Link libraries\n";
                 cmake_content << "target_link_libraries(${PROJECT_NAME}";
                 
-                // Add package libraries (this is a simplification - real packages might have different target names)
-                for (const auto& pkg : packages) {
-                    cmake_content << " " << pkg << "::" << pkg;
+                // Add package libraries honoring link overrides: either pkg::component (if components specified) or pkg::pkg
+                {
+                    std::set<std::string> printed_pkg_targets;
+                    // packages with components
+                    for (const auto& kv : package_to_components) {
+                        const auto& pkg = kv.first;
+                        for (const auto& comp : kv.second) {
+                            std::string key = pkg + ":" + comp;
+                            auto it = link_overrides.find(key);
+                            if (it != link_overrides.end()) {
+                                cmake_content << " " << it->second;
+                            } else {
+                                cmake_content << " " << pkg << "::" << comp;
+                            }
+                        }
+                        printed_pkg_targets.insert(pkg);
+                    }
+                    // plain packages
+                    for (const auto& pkg : packages) {
+                        if (printed_pkg_targets.find(pkg) == printed_pkg_targets.end()) {
+                            auto it = link_overrides.find(pkg);
+                            if (it != link_overrides.end()) {
+                                cmake_content << " " << it->second;
+                            } else {
+                                cmake_content << " " << pkg << "::" << pkg;
+                            }
+                        }
+                    }
                 }
                 
                 // Add library names

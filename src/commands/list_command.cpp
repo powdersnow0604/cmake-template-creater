@@ -30,7 +30,7 @@ namespace ctc {
                 std::cout << std::string(50, '=') << "\n";
                 
                 // Group dependencies by type for better display
-                std::vector<utils::DependencyEntry> packages, lib_paths, lib_names, inc_paths, toolchain_paths;
+                std::vector<utils::DependencyEntry> packages, lib_paths, lib_names, inc_paths, toolchain_paths, pkg_components, link_overrides;
                 
                 for (const auto& dep : dependencies) {
                     switch (dep.type) {
@@ -49,6 +49,12 @@ namespace ctc {
                         case utils::DependencyEntry::TOOLCHAIN_FILE:
                             toolchain_paths.push_back(dep);
                             break;
+                        case utils::DependencyEntry::PACKAGE_COMPONENT:
+                            pkg_components.push_back(dep);
+                            break;
+                        case utils::DependencyEntry::LINK_OVERRIDE:
+                            link_overrides.push_back(dep);
+                            break;
                     }
                 }
                 
@@ -57,6 +63,14 @@ namespace ctc {
                     std::cout << "\n[PACKAGES] CMake find_package:\n";
                     for (const auto& pkg : packages) {
                         std::cout << "  * " << pkg.value << "\n";
+                    }
+                }
+                
+                // Display package components
+                if (!pkg_components.empty()) {
+                    std::cout << "\n[PACKAGE COMPONENTS] <pkg>:<component>:\n";
+                    for (const auto& pc : pkg_components) {
+                        std::cout << "  * " << pc.value << "\n";
                     }
                 }
                 
@@ -92,8 +106,16 @@ namespace ctc {
                     }
                 }
                 
+                // Display link overrides
+                if (!link_overrides.empty()) {
+                    std::cout << "\n[LINK OVERRIDES] (-A):\n";
+                    for (const auto& ov : link_overrides) {
+                        std::cout << "  * " << ov.value << "\n";
+                    }
+                }
+                
                 std::cout << "\n" << std::string(50, '=') << "\n";
-                std::cout << "Total: " << dependencies.size() << " dependencies\n";
+                std::cout << "Total: " << dependencies.size() << " entries\n";
                 std::cout << "\nUse 'ctc run' to automatically apply these dependencies to your CMakeLists.txt\n";
                 
                 return 0;

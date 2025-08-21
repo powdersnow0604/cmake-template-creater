@@ -8,7 +8,7 @@ namespace ctc {
     namespace utils {
         // Enhanced dependency entry structure
         struct DependencyEntry {
-            enum Type { PACKAGE, LIBRARY_PATH, LIBRARY_NAME, INCLUDE_PATH, TOOLCHAIN_FILE };
+            enum Type { PACKAGE, LIBRARY_PATH, LIBRARY_NAME, INCLUDE_PATH, TOOLCHAIN_FILE, PACKAGE_COMPONENT, LINK_OVERRIDE };
             Type type;
             std::string value;
             

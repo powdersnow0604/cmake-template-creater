@@ -54,7 +54,7 @@ namespace ctc {
                     std::cout << "\nApplied dependencies:\n";
                     
                     // Group and show dependencies
-                    std::vector<utils::DependencyEntry> packages, lib_paths, lib_names, inc_paths, toolchain_paths;
+                    std::vector<utils::DependencyEntry> packages, lib_paths, lib_names, inc_paths, toolchain_paths, pkg_components, link_overrides;
                     
                     for (const auto& dep : dependencies) {
                         switch (dep.type) {
@@ -72,6 +72,12 @@ namespace ctc {
                                 break;
                             case utils::DependencyEntry::TOOLCHAIN_FILE:
                                 toolchain_paths.push_back(dep);
+                                break;
+                            case utils::DependencyEntry::PACKAGE_COMPONENT:
+                                pkg_components.push_back(dep);
+                                break;
+                            case utils::DependencyEntry::LINK_OVERRIDE:
+                                link_overrides.push_back(dep);
                                 break;
                         }
                     }
@@ -117,6 +123,24 @@ namespace ctc {
                         for (size_t i = 0; i < toolchain_paths.size(); ++i) {
                             if (i > 0) std::cout << ", ";
                             std::cout << toolchain_paths[i].value;
+                        }
+                        std::cout << "\n";
+                    }
+                    
+                    if (!pkg_components.empty()) {
+                        std::cout << "  - Package components: ";
+                        for (size_t i = 0; i < pkg_components.size(); ++i) {
+                            if (i > 0) std::cout << ", ";
+                            std::cout << pkg_components[i].value;
+                        }
+                        std::cout << "\n";
+                    }
+                    
+                    if (!link_overrides.empty()) {
+                        std::cout << "  - Link overrides: ";
+                        for (size_t i = 0; i < link_overrides.size(); ++i) {
+                            if (i > 0) std::cout << ", ";
+                            std::cout << link_overrides[i].value;
                         }
                         std::cout << "\n";
                     }
