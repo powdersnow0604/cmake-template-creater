@@ -54,7 +54,7 @@ namespace ctc {
                     std::cout << "\nApplied dependencies:\n";
                     
                     // Group and show dependencies
-                    std::vector<utils::DependencyEntry> packages, lib_paths, lib_names, inc_paths;
+                    std::vector<utils::DependencyEntry> packages, lib_paths, lib_names, inc_paths, toolchain_paths;
                     
                     for (const auto& dep : dependencies) {
                         switch (dep.type) {
@@ -69,6 +69,9 @@ namespace ctc {
                                 break;
                             case utils::DependencyEntry::INCLUDE_PATH:
                                 inc_paths.push_back(dep);
+                                break;
+                            case utils::DependencyEntry::TOOLCHAIN_FILE:
+                                toolchain_paths.push_back(dep);
                                 break;
                         }
                     }
@@ -105,6 +108,15 @@ namespace ctc {
                         for (size_t i = 0; i < inc_paths.size(); ++i) {
                             if (i > 0) std::cout << ", ";
                             std::cout << inc_paths[i].value;
+                        }
+                        std::cout << "\n";
+                    }
+                    
+                    if (!toolchain_paths.empty()) {
+                        std::cout << "  - Toolchain file: ";
+                        for (size_t i = 0; i < toolchain_paths.size(); ++i) {
+                            if (i > 0) std::cout << ", ";
+                            std::cout << toolchain_paths[i].value;
                         }
                         std::cout << "\n";
                     }

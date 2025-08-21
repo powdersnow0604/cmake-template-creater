@@ -50,6 +50,13 @@ namespace ctc {
                     }
                     entry.type = utils::DependencyEntry::INCLUDE_PATH;
                     entry.value = args[1];
+                } else if (args[0] == "-T") {
+                    if (args.size() < 2) {
+                        std::cerr << "Error: Toolchain file path required after -T\n";
+                        return 1;
+                    }
+                    entry.type = utils::DependencyEntry::TOOLCHAIN_FILE;
+                    entry.value = args[1];
                 } else {
                     // Default - assume it's a package name
                     entry.type = utils::DependencyEntry::PACKAGE;
@@ -75,6 +82,9 @@ namespace ctc {
                         break;
                     case utils::DependencyEntry::INCLUDE_PATH:
                         type_name = "include path";
+                        break;
+                    case utils::DependencyEntry::TOOLCHAIN_FILE:
+                        type_name = "toolchain file";
                         break;
                 }
                 

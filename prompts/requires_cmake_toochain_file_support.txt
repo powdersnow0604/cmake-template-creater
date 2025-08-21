@@ -1,0 +1,5 @@
+I want to add new functionality in library management
+.libname now should also record CMAKE_TOOLCHAIN_FILE path
+Then the path should be used in cmake excution
+for example
+cmake -DCMAKE_TOOLCHAIN_FILE=vcpkg-root/scripts/buildsystems/vcpkg.cmake ..

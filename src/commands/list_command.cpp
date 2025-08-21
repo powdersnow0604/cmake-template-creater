@@ -30,7 +30,7 @@ namespace ctc {
                 std::cout << std::string(50, '=') << "\n";
                 
                 // Group dependencies by type for better display
-                std::vector<utils::DependencyEntry> packages, lib_paths, lib_names, inc_paths;
+                std::vector<utils::DependencyEntry> packages, lib_paths, lib_names, inc_paths, toolchain_paths;
                 
                 for (const auto& dep : dependencies) {
                     switch (dep.type) {
@@ -45,6 +45,9 @@ namespace ctc {
                             break;
                         case utils::DependencyEntry::INCLUDE_PATH:
                             inc_paths.push_back(dep);
+                            break;
+                        case utils::DependencyEntry::TOOLCHAIN_FILE:
+                            toolchain_paths.push_back(dep);
                             break;
                     }
                 }
@@ -78,6 +81,14 @@ namespace ctc {
                     std::cout << "\n[INCLUDES] Include Paths (-I):\n";
                     for (const auto& path : inc_paths) {
                         std::cout << "  * " << path.value << "\n";
+                    }
+                }
+                
+                // Display toolchain file
+                if (!toolchain_paths.empty()) {
+                    std::cout << "\n[TOOLCHAIN] CMAKE_TOOLCHAIN_FILE (-T):\n";
+                    for (const auto& tc : toolchain_paths) {
+                        std::cout << "  * " << tc.value << "\n";
                     }
                 }
                 

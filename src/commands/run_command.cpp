@@ -11,6 +11,7 @@ namespace ctc {
         int run_command(const std::vector<std::string>& args) {
             std::string project_name = "my_project"; // Default name
             std::string build_mode = "Release"; // Default to Release mode
+            bool keep_build_directory = false; // Default to cleanup after build
             
             // Parse arguments for -n and -m flags
             for (size_t i = 0; i < args.size(); ++i) {
@@ -25,6 +26,8 @@ namespace ctc {
                         std::cerr << "Error: Invalid build mode '" << mode << "'. Valid modes are: Debug, Release, MinSizeRel, RelWithDebInfo\n";
                         return 1;
                     }
+                } else if (args[i] == "-k" || args[i] == "--keep-build") {
+                    keep_build_directory = true;
                 }
             }
             const std::filesystem::path current_dir = std::filesystem::current_path();
@@ -89,9 +92,16 @@ namespace ctc {
                 }
                 std::cout << "Changed to build directory\n";
                 
-                // 6. Execute cmake with build mode
+                // 6. Execute cmake with build mode (and optional toolchain file from .libname)
                 std::cout << "Running cmake with build mode " << build_mode << "...\n";
-                std::string cmake_command = "cmake -DCMAKE_BUILD_TYPE=" + build_mode + " ..";
+                std::string toolchain_arg;
+                for (const auto& dep : dependencies) {
+                    if (dep.type == utils::DependencyEntry::TOOLCHAIN_FILE) {
+                        toolchain_arg = " -DCMAKE_TOOLCHAIN_FILE=\"" + dep.value + "\"";
+                        break; // Use the first one found
+                    }
+                }
+                std::string cmake_command = "cmake -DCMAKE_BUILD_TYPE=" + build_mode + toolchain_arg + " ..";
                 int cmake_result = std::system(cmake_command.c_str());
                 if (cmake_result != 0) {
                     std::cerr << "CMake configuration failed\n";
@@ -147,13 +157,17 @@ namespace ctc {
                     }
                 }
                 
-                // 10. Delete build directory
-                std::cout << "Cleaning up build directory...\n";
-                std::filesystem::remove_all(build_dir, ec);
-                if (ec) {
-                    std::cerr << "Warning: Failed to remove build directory: " << ec.message() << "\n";
+                // 10. Optionally delete build directory
+                if (!keep_build_directory) {
+                    std::cout << "Cleaning up build directory...\n";
+                    std::filesystem::remove_all(build_dir, ec);
+                    if (ec) {
+                        std::cerr << "Warning: Failed to remove build directory: " << ec.message() << "\n";
+                    } else {
+                        std::cout << "Build directory cleaned up\n";
+                    }
                 } else {
-                    std::cout << "Build directory cleaned up\n";
+                    std::cout << "Keeping build directory as requested (-k/--keep-build).\n";
                 }
                 
                 std::cout << "Build completed successfully!\n";

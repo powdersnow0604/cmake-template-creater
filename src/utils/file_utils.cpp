@@ -14,6 +14,7 @@ namespace ctc {
                 case LIBRARY_PATH: return "LIBPATH:" + value;
                 case LIBRARY_NAME: return "LIB:" + value;
                 case INCLUDE_PATH: return "INCPATH:" + value;
+                case TOOLCHAIN_FILE: return "TOOLCHAIN:" + value;
                 default: return value;
             }
         }
@@ -32,6 +33,9 @@ namespace ctc {
             } else if (str.substr(0, 8) == "INCPATH:") {
                 entry.type = INCLUDE_PATH;
                 entry.value = str.substr(8);
+            } else if (str.substr(0, 10) == "TOOLCHAIN:") {
+                entry.type = TOOLCHAIN_FILE;
+                entry.value = str.substr(10);
             } else {
                 // Legacy format - assume it's a package
                 entry.type = PACKAGE;
@@ -177,6 +181,9 @@ namespace ctc {
                         break;
                     case DependencyEntry::INCLUDE_PATH:
                         inc_paths.push_back(dep.value);
+                        break;
+                    case DependencyEntry::TOOLCHAIN_FILE:
+                        // Toolchain file is used during cmake invocation, not in CMakeLists content
                         break;
                 }
             }
