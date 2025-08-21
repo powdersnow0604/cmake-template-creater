@@ -163,6 +163,10 @@ namespace ctc {
         std::string generate_cmake_content(const std::string& project_name, const std::vector<DependencyEntry>& dependencies) {
             std::stringstream cmake_content;
             
+            // Managed header
+            cmake_content << "# === CTC MANAGED SECTION (auto-generated) ===\n";
+            cmake_content << "# Edits in this section may be overwritten by 'ctc apply' or 'ctc run'.\n\n";
+
             // Basic project setup
             cmake_content << "cmake_minimum_required(VERSION 3.17)\n";
             cmake_content << "project(" << project_name << " VERSION 1.0.0)\n\n";
@@ -220,16 +224,34 @@ namespace ctc {
                 }
             }
             
-            // Add find_package calls: try CONFIG first, fallback to MODULE
+            // Add find_package calls: try CONFIG first (with COMPONENTS if present), fallback to MODULE (with COMPONENTS if present)
             if (!packages.empty() || !package_to_components.empty()) {
                 cmake_content << "# Find packages (try CONFIG first, fallback to MODULE)\n";
                 // unique set of all packages involved (plain packages + packages with components)
                 std::set<std::string> all_pkgs(packages.begin(), packages.end());
                 for (const auto& kv : package_to_components) { all_pkgs.insert(kv.first); }
                 for (const auto& pkg : all_pkgs) {
-                    cmake_content << "find_package(" << pkg << " QUIET CONFIG)\n";
+                    const auto comps_it = package_to_components.find(pkg);
+                    const bool has_components = comps_it != package_to_components.end() && !comps_it->second.empty();
+                    // CONFIG attempt
+                    cmake_content << "find_package(" << pkg << " QUIET CONFIG";
+                    if (has_components) {
+                        cmake_content << " COMPONENTS";
+                        for (const auto& comp : comps_it->second) {
+                            cmake_content << " " << comp;
+                        }
+                    }
+                    cmake_content << ")\n";
+                    // Fallback to MODULE
                     cmake_content << "if(NOT " << pkg << "_FOUND)\n";
-                    cmake_content << "    find_package(" << pkg << " REQUIRED MODULE)\n";
+                    cmake_content << "    find_package(" << pkg << " REQUIRED MODULE";
+                    if (has_components) {
+                        cmake_content << " COMPONENTS";
+                        for (const auto& comp : comps_it->second) {
+                            cmake_content << " " << comp;
+                        }
+                    }
+                    cmake_content << ")\n";
                     cmake_content << "endif()\n";
                 }
                 cmake_content << "\n";
@@ -317,8 +339,28 @@ namespace ctc {
         }
         
         bool update_cmake_file(const std::filesystem::path& cmake_path, const std::string& project_name, const std::vector<DependencyEntry>& dependencies) {
-            std::string content = generate_cmake_content(project_name, dependencies);
-            return write_file(cmake_path, content);
+            const std::string user_marker = "# === CTC USER SECTION (not modified by ctc) ===";
+            const std::string user_placeholder = R"(# === CTC USER SECTION (not modified by ctc) ===
+# Add any custom CMake logic below. This section is preserved by ctc.
+)";
+
+            std::string managed_content = generate_cmake_content(project_name, dependencies);
+
+            // Preserve existing user section if present
+            std::string existing = read_file(cmake_path);
+            std::string user_section;
+            if (!existing.empty()) {
+                size_t pos = existing.find(user_marker);
+                if (pos != std::string::npos) {
+                    user_section = existing.substr(pos);
+                }
+            }
+            if (user_section.empty()) {
+                user_section = user_placeholder;
+            }
+
+            std::string final_content = managed_content + "\n" + user_section;
+            return write_file(cmake_path, final_content);
         }
 
         std::string get_cmake_template() {
