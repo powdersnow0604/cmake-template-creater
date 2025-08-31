@@ -92,16 +92,9 @@ namespace ctc {
                 }
                 std::cout << "Changed to build directory\n";
                 
-                // 6. Execute cmake with build mode (and optional toolchain file from .libname)
+                // 6. Execute cmake with build mode (CMAKE_TOOLCHAIN_FILE is embedded in CMakeLists if specified)
                 std::cout << "Running cmake with build mode " << build_mode << "...\n";
-                std::string toolchain_arg;
-                for (const auto& dep : dependencies) {
-                    if (dep.type == utils::DependencyEntry::TOOLCHAIN_FILE) {
-                        toolchain_arg = " -DCMAKE_TOOLCHAIN_FILE=\"" + dep.value + "\"";
-                        break; // Use the first one found
-                    }
-                }
-                std::string cmake_command = "cmake -DCMAKE_BUILD_TYPE=" + build_mode + toolchain_arg + " ..";
+                std::string cmake_command = "cmake -DCMAKE_BUILD_TYPE=" + build_mode + " ..";
                 int cmake_result = std::system(cmake_command.c_str());
                 if (cmake_result != 0) {
                     std::cerr << "CMake configuration failed\n";

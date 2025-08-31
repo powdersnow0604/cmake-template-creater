@@ -185,6 +185,8 @@ namespace ctc {
             std::map<std::string, std::vector<std::string>> package_to_components;
             // map of pkg or pkg:component -> custom link name
             std::map<std::string, std::string> link_overrides;
+            // toolchain file (if specified)
+            std::string toolchain_file_path;
             
             for (const auto& dep : dependencies) {
                 switch (dep.type) {
@@ -201,7 +203,9 @@ namespace ctc {
                         inc_paths.push_back(dep.value);
                         break;
                     case DependencyEntry::TOOLCHAIN_FILE:
-                        // Toolchain file is used during cmake invocation, not in CMakeLists content
+                        if (toolchain_file_path.empty()) {
+                            toolchain_file_path = dep.value;
+                        }
                         break;
                     case DependencyEntry::LINK_OVERRIDE: {
                         auto eq = dep.value.find('=');
@@ -224,6 +228,12 @@ namespace ctc {
                 }
             }
             
+            // If toolchain specified, set it before project()
+            if (!toolchain_file_path.empty()) {
+                cmake_content << "# Toolchain\n";
+                cmake_content << "set(CMAKE_TOOLCHAIN_FILE \"" << toolchain_file_path << "\" CACHE FILEPATH \"Toolchain file\")\n\n";
+            }
+
             // Add find_package calls: try CONFIG first (with COMPONENTS if present), fallback to MODULE (with COMPONENTS if present)
             if (!packages.empty() || !package_to_components.empty()) {
                 cmake_content << "# Find packages (try CONFIG first, fallback to MODULE)\n";
