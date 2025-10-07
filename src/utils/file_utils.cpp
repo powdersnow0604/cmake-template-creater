@@ -163,19 +163,6 @@ namespace ctc {
         std::string generate_cmake_content(const std::string& project_name, const std::vector<DependencyEntry>& dependencies) {
             std::stringstream cmake_content;
             
-            // Managed header
-            cmake_content << "# === CTC MANAGED SECTION (auto-generated) ===\n";
-            cmake_content << "# Edits in this section may be overwritten by 'ctc apply' or 'ctc run'.\n\n";
-
-            // Basic project setup
-            cmake_content << "cmake_minimum_required(VERSION 3.17)\n";
-            cmake_content << "project(" << project_name << " VERSION 1.0.0)\n\n";
-            
-            // Set C++17 standard
-            cmake_content << "# Set C++17 standard\n";
-            cmake_content << "set(CMAKE_CXX_STANDARD 17)\n";
-            cmake_content << "set(CMAKE_CXX_STANDARD_REQUIRED ON)\n\n";
-            
             // Process dependencies
             std::vector<std::string> packages;
             std::vector<std::string> lib_paths;
@@ -227,12 +214,26 @@ namespace ctc {
                     }
                 }
             }
+
+            // Managed header
+            cmake_content << "# === CTC MANAGED SECTION (auto-generated) ===\n";
+            cmake_content << "# Edits in this section may be overwritten by 'ctc apply' or 'ctc run'.\n\n";
+
+            // Basic project setup
+            cmake_content << "cmake_minimum_required(VERSION 3.17)\n";
             
             // If toolchain specified, set it before project()
             if (!toolchain_file_path.empty()) {
                 cmake_content << "# Toolchain\n";
                 cmake_content << "set(CMAKE_TOOLCHAIN_FILE \"" << toolchain_file_path << "\" CACHE FILEPATH \"Toolchain file\")\n\n";
             }
+
+            cmake_content << "project(" << project_name << " VERSION 1.0.0)\n\n";
+            
+            // Set C++17 standard
+            cmake_content << "# Set C++17 standard\n";
+            cmake_content << "set(CMAKE_CXX_STANDARD 17)\n";
+            cmake_content << "set(CMAKE_CXX_STANDARD_REQUIRED ON)\n\n";
 
             // Add find_package calls: try CONFIG first (with COMPONENTS if present), fallback to MODULE (with COMPONENTS if present)
             if (!packages.empty() || !package_to_components.empty()) {
