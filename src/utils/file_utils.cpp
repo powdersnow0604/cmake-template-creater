@@ -224,7 +224,7 @@ namespace ctc {
             
             // If toolchain specified, set it before project()
             if (!toolchain_file_path.empty()) {
-                cmake_content << "# Toolchain\n";
+                cmake_content << "\n# Toolchain\n";
                 cmake_content << "set(CMAKE_TOOLCHAIN_FILE \"" << toolchain_file_path << "\" CACHE FILEPATH \"Toolchain file\")\n\n";
             }
 
@@ -289,9 +289,9 @@ namespace ctc {
             
             // Collect source files
             cmake_content << "# Collect source files from lib directory\n";
-            cmake_content << "file(GLOB_RECURSE LIB_SOURCES \"lib/*.cpp\" \"lib/*.c\")\n\n";
+            cmake_content << "file(GLOB_RECURSE LIB_SOURCES \"lib/*.cpp\" \"lib/*.cc\" \"lib/*.c\")\n\n";
             cmake_content << "# Collect source files from app directory\n";
-            cmake_content << "file(GLOB_RECURSE APP_SOURCES \"app/*.cpp\" \"app/*.c\")\n\n";
+            cmake_content << "file(GLOB_RECURSE APP_SOURCES \"app/*.cpp\" \"app/*.cc\" \"app/*.c\")\n\n";
             
             // Create executable
             cmake_content << "# Create executable\n";
@@ -389,10 +389,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(include)
 
 # Collect source files from lib directory
-file(GLOB_RECURSE LIB_SOURCES "lib/*.cpp" "lib/*.c")
+file(GLOB_RECURSE LIB_SOURCES "lib/*.cpp" "lib/*.cc" "lib/*.c")
 
 # Collect source files from app directory  
-file(GLOB_RECURSE APP_SOURCES "app/*.cpp" "app/*.c")
+file(GLOB_RECURSE APP_SOURCES "app/*.cpp" "app/*.cc" "app/*.c")
 
 # Create executable
 add_executable(${PROJECT_NAME} ${APP_SOURCES} ${LIB_SOURCES})
