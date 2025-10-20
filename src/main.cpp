@@ -26,10 +26,11 @@ void print_help() {
     std::cout << "  uninstall -A <map>            Remove link override mapping\n\n";
     std::cout << "  apply [-n <name>]            Update CMakeLists.txt with dependencies (no build)\n";
     std::cout << "                               Use -n to specify project name (default: my_project)\n\n";
-    std::cout << "  run [-n <name>] [-m <mode>] [-k|--keep-build]  Build project using CMake (auto-updates CMakeLists.txt)\n";
+    std::cout << "  run [-n <name>] [-m <mode>] [-k|--keep-build] [-U]  Build project using CMake\n";
     std::cout << "                               Use -n to specify project name (default: my_project)\n";
     std::cout << "                               Use -m to specify build mode (default: Release)\n";
     std::cout << "                               Use -k/--keep-build to keep the build directory after build\n";
+    std::cout << "                               Use -U/--update-cmake to update CMakeLists.txt before build\n";
     std::cout << "                               Valid modes: Debug, Release, MinSizeRel, RelWithDebInfo\n\n";
     std::cout << "  list                         Show all dependencies in .libname file\n\n";
     std::cout << "  help                         Show this help message\n\n";

@@ -59,25 +59,35 @@ ctc init -r
 
 ### Manage Dependencies
 
-CTC supports multiple types of dependencies similar to GCC/G++ flags:
+CTC supports multiple types of dependencies similar to GCC/G++ flags, plus package components and custom link targets:
 
 **Add dependencies:**
 ```bash
 ctc install <package-name>          # Add CMake package (uses find_package)
+ctc install <pkg>:<component>       # Add a specific package component (links as pkg::component)
+ctc install <pkg> -c <comp> [-c <comp> ...]  # Add multiple components for a package
 ctc install -L /path/to/libraries   # Add library search path
 ctc install -l pthread              # Add library to link
 ctc install -I /usr/local/include   # Add include directory
+ctc install -T vcpkg/scripts/buildsystems/vcpkg.cmake  # Set CMAKE_TOOLCHAIN_FILE in CMakeLists.txt
+ctc install -A <key>=<target>       # Add link override mapping:
+                                    #   key = <pkg> or <pkg>:<component>
+                                    #   target = custom target to use in target_link_libraries
 ```
 
 **Remove dependencies:**
 ```bash
 ctc uninstall <package-name>        # Remove CMake package
+ctc uninstall <pkg>:<component>     # Remove package component
+ctc uninstall <pkg> -c <comp> [-c <comp> ...]  # Remove one or more components
 ctc uninstall -L /path/to/libraries # Remove library search path
 ctc uninstall -l pthread            # Remove library
 ctc uninstall -I /usr/local/include # Remove include directory
+ctc uninstall -T vcpkg/scripts/buildsystems/vcpkg.cmake  # Remove toolchain file setting
+ctc uninstall -A <key>=<target>     # Remove link override mapping
 ```
 
-Dependencies are tracked in the `.libname` file with a structured format. The `ctc run` command automatically generates the appropriate `CMakeLists.txt` content based on these dependencies.
+Dependencies are tracked in the `.libname` file with a structured format. Use `ctc apply` or `ctc run -U` to generate/update `CMakeLists.txt` content based on these dependencies. By default, `ctc run` builds using the existing `CMakeLists.txt`.
 
 ### List Dependencies
 
@@ -112,14 +122,15 @@ This is useful when you want to update your CMakeLists.txt after adding/removing
 
 Build your project with a single command:
 ```bash
-ctc run                              # Build in Release mode (default)
+ctc run                              # Build in Release mode (default), uses existing CMakeLists.txt
 ```
 
 To specify a custom project name and build mode:
 ```bash
-ctc run -n my_awesome_project        # Custom name, Release mode
-ctc run -m Debug                     # Default name, Debug mode  
+ctc run -n my_awesome_project        # Custom name, Release mode (uses existing CMakeLists.txt)
+ctc run -m Debug                     # Default name, Debug mode
 ctc run -n my_project -m Debug       # Custom name, Debug mode
+ctc run -U -m Debug                  # Update CMakeLists.txt from .libname, then build in Debug
 ```
 
 **Available build modes:**
@@ -129,13 +140,12 @@ ctc run -n my_project -m Debug       # Custom name, Debug mode
 - **RelWithDebInfo** - Optimized with debugging information
 
 This process:
-1. Reads dependencies from `.libname` file
-2. Automatically generates/updates `CMakeLists.txt` with project name and dependencies
-3. Creates a temporary `build` directory
-4. Runs `cmake -DCMAKE_BUILD_TYPE=<mode> ..` to configure the build
-5. Runs `cmake --build . --config <mode>` to compile
-6. Copies the executable to the `bin/` directory
-7. Cleans up the temporary build directory
+1. Optionally updates `CMakeLists.txt` from `.libname` if `-U/--update-cmake` is used
+2. Creates a `build` directory
+3. Runs `cmake -DCMAKE_BUILD_TYPE=<mode> ..` to configure the build
+4. Runs `cmake --build . --config <mode>` to compile
+5. Copies the executable to the `bin/` directory
+6. Removes the `build` directory (use `-k/--keep-build` to keep it)
 
 ### Get Help
 
@@ -199,29 +209,36 @@ your-project/
 
 **Alternative (one-step build with options):**
    ```bash
-   ctc run -n my_awesome_project -m Debug    # Apply dependencies and build in Debug mode
-   ctc run -n my_awesome_project             # Apply dependencies and build in Release mode
+   ctc run -U -n my_awesome_project -m Debug # Update CMakeLists and build in Debug mode
+   ctc run -U -n my_awesome_project          # Update CMakeLists and build in Release mode
    ```
 
-The `CMakeLists.txt` file is automatically generated/updated to include all your dependencies!
+The `CMakeLists.txt` file can be generated/updated to include all your dependencies using `ctc apply` or `ctc run -U`!
 
 ## Automatic CMakeLists.txt Generation
 
 The automatically generated `CMakeLists.txt` includes:
 - C++17 standard requirement
 - Project name (from `-n` flag or default)
-- `find_package()` calls for packages added with `ctc install <package>`
+- Toolchain file setting if installed via `ctc install -T <file>` (set before `project()`)
+- `find_package()` calls for packages, trying `CONFIG` first and falling back to `MODULE`
+  - If components were installed (e.g., `ctc install Boost -c program_options -c exception`), `COMPONENTS` are passed to `find_package`
 - `link_directories()` for library paths added with `ctc install -L <path>`
 - `include_directories()` for include paths added with `ctc install -I <path>`
-- Automatic source file collection from `app/` and `lib/`
-- `target_link_libraries()` for libraries added with `ctc install -l <library>`
+- Automatic source file collection from `app/` and `lib/` (supports `.cpp`, `.cc`, `.c`)
+- `target_link_libraries()` entries for:
+  - packages as `pkg::pkg` when no components are specified
+  - package components as `pkg::component`
+  - custom overrides from `ctc install -A <key>=<target>` (e.g., `-A glfw3=glfw`)
 - Executable output to `bin/` directory
 
 **No manual CMakeLists.txt editing required!** Just use:
 - `ctc install` to add dependencies
-- `ctc apply` to update CMakeLists.txt  
-- `ctc run` to update CMakeLists.txt and build (defaults to Release mode)
+- `ctc apply` to update CMakeLists.txt (no build)
+- `ctc run -U` to update CMakeLists.txt and build (defaults to Release mode)
+- `ctc run` to build using the existing CMakeLists.txt
 - `ctc run -m Debug` to build in Debug mode
+- `ctc run -k` to keep the build directory after building
 
 ## Requirements
 

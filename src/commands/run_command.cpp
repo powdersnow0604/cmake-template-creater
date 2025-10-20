@@ -12,6 +12,7 @@ namespace ctc {
             std::string project_name = "my_project"; // Default name
             std::string build_mode = "Release"; // Default to Release mode
             bool keep_build_directory = false; // Default to cleanup after build
+            bool update_cmake = false; // Default: do not update CMakeLists.txt
             
             // Parse arguments for -n and -m flags
             for (size_t i = 0; i < args.size(); ++i) {
@@ -28,6 +29,8 @@ namespace ctc {
                     }
                 } else if (args[i] == "-k" || args[i] == "--keep-build") {
                     keep_build_directory = true;
+                } else if (args[i] == "-U" || args[i] == "--update-cmake") {
+                    update_cmake = true;
                 }
             }
             const std::filesystem::path current_dir = std::filesystem::current_path();
@@ -39,28 +42,26 @@ namespace ctc {
             std::cout << "Starting build process in " << build_mode << " mode...\n";
             
             try {
-                // 1. Check if .libname and CMakeLists.txt exist
-                if (!std::filesystem::exists(cmake_path)) {
-                    std::cerr << "Error: CMakeLists.txt not found. Run 'ctc init' first.\n";
-                    return 1;
+                // 1. Optionally update CMakeLists.txt from .libname
+                if (update_cmake) {
+                    if (!std::filesystem::exists(libname_path)) {
+                        std::cerr << "Error: .libname file not found. Run 'ctc init' first.\n";
+                        return 1;
+                    }
+                    std::cout << "Reading dependencies from .libname...\n";
+                    std::vector<utils::DependencyEntry> dependencies = utils::read_libname(libname_path);
+                    std::cout << "Updating CMakeLists.txt with project name '" << project_name << "' and dependencies...\n";
+                    if (!utils::update_cmake_file(cmake_path, project_name, dependencies)) {
+                        std::cerr << "Failed to update CMakeLists.txt\n";
+                        return 1;
+                    }
+                    std::cout << "CMakeLists.txt updated successfully.\n";
+                } else {
+                    if (!std::filesystem::exists(cmake_path)) {
+                        std::cerr << "Error: CMakeLists.txt not found. Run 'ctc apply' or use 'ctc run -U' first.\n";
+                        return 1;
+                    }
                 }
-                
-                if (!std::filesystem::exists(libname_path)) {
-                    std::cerr << "Error: .libname file not found. Run 'ctc init' first.\n";
-                    return 1;
-                }
-                
-                // 2. Read dependencies from .libname and update CMakeLists.txt
-                std::cout << "Reading dependencies from .libname...\n";
-                std::vector<utils::DependencyEntry> dependencies = utils::read_libname(libname_path);
-                
-                std::cout << "Updating CMakeLists.txt with project name '" << project_name << "' and dependencies...\n";
-                if (!utils::update_cmake_file(cmake_path, project_name, dependencies)) {
-                    std::cerr << "Failed to update CMakeLists.txt\n";
-                    return 1;
-                }
-                
-                std::cout << "CMakeLists.txt updated successfully.\n";
                 
                 // 3. Create bin directory if it doesn't exist
                 if (!utils::create_directory_if_not_exists(bin_dir)) {
